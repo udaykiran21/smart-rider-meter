@@ -137,3 +137,8 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Keep container env defaults in repo for quick docker compose startup
+!/.env
+!/backend/.env
+!/frontend/.env

@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Ride {
+  id                  String   @id @default(cuid())
+  status              RideStatus @default(STARTED)
+  startLatitude       Float
+  startLongitude      Float
+  startZone           ZoneType
+  passengerCount      Int
+  startedAt           DateTime @default(now())
+  endedAt             DateTime?
+  endLatitude         Float?
+  endLongitude        Float?
+  endZone             ZoneType?
+  distanceKm          Float?
+  baseFare            Float?
+  distanceCharge      Float?
+  adjustmentCharge    Float?
+  totalFare           Float?
+  breakdown           Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+enum RideStatus {
+  STARTED
+  ENDED
+}
+
+enum ZoneType {
+  STANDARD
+  AIRPORT
+  RAILWAY
+  SUBURBAN
+}
