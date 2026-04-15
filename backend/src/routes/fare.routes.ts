@@ -109,7 +109,7 @@ router.post('/ride/end', async (req, res) => {
       distanceCharge: breakdown.distanceCharge,
       adjustmentCharge: breakdown.adjustmentCharge,
       totalFare: breakdown.totalFare,
-      breakdown
+      breakdown: JSON.parse(JSON.stringify(breakdown))
     }
   });
 
