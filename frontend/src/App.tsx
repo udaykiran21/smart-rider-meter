@@ -36,6 +36,34 @@ export default function App() {
     []
   );
 
+  const getErrorMessage = (data: unknown, fallback: string) => {
+    if (!data || typeof data !== 'object') {
+      return fallback;
+    }
+
+    const maybeData = data as {
+      error?: string;
+      errors?: { fieldErrors?: Record<string, string[]> };
+    };
+
+    if (maybeData.error) {
+      return maybeData.error;
+    }
+
+    const fieldErrors = maybeData.errors?.fieldErrors;
+
+    if (fieldErrors) {
+      const firstFieldError = Object.values(fieldErrors).flat()[0];
+      if (firstFieldError) {
+        return firstFieldError;
+      }
+    }
+
+    return fallback;
+  };
+
+  const isValidCoordinate = (value: number) => Number.isFinite(value);
+
   const estimateFare = async (event: FormEvent) => {
     event.preventDefault();
     setMessage('Calculating estimate...');
@@ -49,7 +77,7 @@ export default function App() {
     const data = await response.json();
 
     if (!response.ok) {
-      setMessage('Failed to estimate fare');
+      setMessage(getErrorMessage(data, 'Failed to estimate fare'));
       return;
     }
 
@@ -58,6 +86,16 @@ export default function App() {
   };
 
   const startRide = async () => {
+    if (!isValidCoordinate(trip.startLatitude) || !isValidCoordinate(trip.startLongitude)) {
+      setMessage('Enter valid start coordinates');
+      return;
+    }
+
+    if (!Number.isInteger(trip.passengerCount) || trip.passengerCount < 1 || trip.passengerCount > 6) {
+      setMessage('Passenger count must be a whole number between 1 and 6');
+      return;
+    }
+
     setMessage('Starting ride...');
     const response = await fetch(`${apiUrl}/ride/start`, {
       method: 'POST',
@@ -73,7 +111,7 @@ export default function App() {
     const data = await response.json();
 
     if (!response.ok) {
-      setMessage('Ride start failed');
+      setMessage(getErrorMessage(data, 'Ride start failed'));
       return;
     }
 
