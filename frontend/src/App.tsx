@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 type ZoneType = 'STANDARD' | 'AIRPORT' | 'RAILWAY' | 'SUBURBAN';
 
@@ -24,13 +24,30 @@ const defaultTrip = {
   passengerCount: 1
 };
 
+const themeOptions = ['light', 'dark', 'sunset'] as const;
+type ThemeName = (typeof themeOptions)[number];
+
+const getInitialTheme = (): ThemeName => {
+  const savedTheme = window.localStorage.getItem('theme');
+
+  if (savedTheme && themeOptions.includes(savedTheme as ThemeName)) {
+    return savedTheme as ThemeName;
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'sunset';
+};
+
 export default function App() {
   const [trip, setTrip] = useState(defaultTrip);
   const [estimate, setEstimate] = useState<Breakdown | null>(null);
   const [rideId, setRideId] = useState<string>('');
   const [rideEndBreakdown, setRideEndBreakdown] = useState<Breakdown | null>(null);
   const [message, setMessage] = useState<string>('');
-  const [theme, setTheme] = useState<'light' | 'dark' | 'sunset'>('light');
+  const [theme, setTheme] = useState<ThemeName>(getInitialTheme);
+
+  useEffect(() => {
+    window.localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const zoneOptions: ZoneType[] = useMemo(
     () => ['STANDARD', 'AIRPORT', 'RAILWAY', 'SUBURBAN'],
@@ -157,7 +174,7 @@ export default function App() {
           <h1>Auto-Rickshaw Fare Estimator</h1>
         </div>
         <nav className="theme-nav" aria-label="Theme switcher">
-          {(['light', 'dark', 'sunset'] as const).map((name) => (
+          {themeOptions.map((name) => (
             <button
               key={name}
               type="button"
