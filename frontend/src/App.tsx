@@ -24,7 +24,7 @@ const defaultTrip = {
   passengerCount: 1
 };
 
-const themeOptions = ['light', 'dark', 'sunset'] as const;
+const themeOptions = ['ruby', 'mint', 'sky'] as const;
 type ThemeName = (typeof themeOptions)[number];
 
 const getInitialTheme = (): ThemeName => {
@@ -34,7 +34,7 @@ const getInitialTheme = (): ThemeName => {
     return savedTheme as ThemeName;
   }
 
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'sunset';
+  return 'ruby';
 };
 
 export default function App() {
