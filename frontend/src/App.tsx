@@ -104,6 +104,11 @@ export default function App() {
   };
 
   const startRide = async () => {
+    if (rideId) {
+      setMessage('A ride is already active');
+      return;
+    }
+
     if (!isValidCoordinate(trip.startLatitude) || !isValidCoordinate(trip.startLongitude)) {
       setMessage('Enter valid start coordinates');
       return;
@@ -164,6 +169,7 @@ export default function App() {
 
     setRideEndBreakdown(data.breakdown);
     setMessage(`Ride ended: ${data.status}`);
+    setRideId(''); // Clear the active ride ID
   };
 
   return (
@@ -252,8 +258,8 @@ export default function App() {
         <div className="card animated-card delay-1">
           <h2>Ride Lifecycle</h2>
           <div className="actions">
-            <button onClick={startRide} className="primary-btn">Start Ride</button>
-            <button onClick={endRide} className="secondary-btn">End Ride</button>
+            <button onClick={startRide} className="primary-btn" disabled={!!rideId}>Start Ride</button>
+            <button onClick={endRide} className="secondary-btn" disabled={!rideId}>End Ride</button>
           </div>
           {rideId && <p>Active Ride ID: {rideId}</p>}
         </div>
