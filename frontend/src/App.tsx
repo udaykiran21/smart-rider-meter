@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 
 type ZoneType = 'STANDARD' | 'AIRPORT' | 'RAILWAY' | 'SUBURBAN';
 
@@ -24,24 +24,11 @@ const defaultTrip = {
   passengerCount: 1
 };
 
-const themeOptions = ['ruby', 'mint', 'sky'] as const;
-type ThemeName = (typeof themeOptions)[number];
-
 const zoneDescriptions: Record<ZoneType, string> = {
   STANDARD: 'Everyday city route',
   AIRPORT: 'Premium airport pickup',
   RAILWAY: 'Station transfer zone',
   SUBURBAN: 'Longer suburban stretch'
-};
-
-const getInitialTheme = (): ThemeName => {
-  const savedTheme = window.localStorage.getItem('theme');
-
-  if (savedTheme && themeOptions.includes(savedTheme as ThemeName)) {
-    return savedTheme as ThemeName;
-  }
-
-  return 'ruby';
 };
 
 export default function App() {
@@ -50,11 +37,6 @@ export default function App() {
   const [rideId, setRideId] = useState<string>('');
   const [rideEndBreakdown, setRideEndBreakdown] = useState<Breakdown | null>(null);
   const [message, setMessage] = useState<string>('');
-  const [theme, setTheme] = useState<ThemeName>(getInitialTheme);
-
-  useEffect(() => {
-    window.localStorage.setItem('theme', theme);
-  }, [theme]);
 
   const zoneOptions: ZoneType[] = useMemo(
     () => ['STANDARD', 'AIRPORT', 'RAILWAY', 'SUBURBAN'],
@@ -185,7 +167,7 @@ export default function App() {
   };
 
   return (
-    <div className="app" data-theme={theme}>
+    <div className="app">
       <header className="navbar glass-panel">
         <div className="brand-lockup">
           <span className="logo-mark" aria-hidden="true">🛺</span>
@@ -194,19 +176,6 @@ export default function App() {
             <h1>Fast, transparent auto-rickshaw fares</h1>
           </div>
         </div>
-        <nav className="theme-nav" aria-label="Theme switcher">
-          {themeOptions.map((name) => (
-            <button
-              key={name}
-              type="button"
-              className={theme === name ? 'theme-btn active' : 'theme-btn'}
-              onClick={() => setTheme(name)}
-              aria-pressed={theme === name}
-            >
-              {name}
-            </button>
-          ))}
-        </nav>
       </header>
 
       <main className="container">
