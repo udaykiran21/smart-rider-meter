@@ -27,6 +27,13 @@ const defaultTrip = {
 const themeOptions = ['ruby', 'mint', 'sky'] as const;
 type ThemeName = (typeof themeOptions)[number];
 
+const zoneDescriptions: Record<ZoneType, string> = {
+  STANDARD: 'Everyday city route',
+  AIRPORT: 'Premium airport pickup',
+  RAILWAY: 'Station transfer zone',
+  SUBURBAN: 'Longer suburban stretch'
+};
+
 const getInitialTheme = (): ThemeName => {
   const savedTheme = window.localStorage.getItem('theme');
 
@@ -53,6 +60,10 @@ export default function App() {
     () => ['STANDARD', 'AIRPORT', 'RAILWAY', 'SUBURBAN'],
     []
   );
+
+  const activeBreakdown = rideEndBreakdown ?? estimate;
+  const routeDistance = activeBreakdown ? `${activeBreakdown.distanceKm.toFixed(2)} km` : '—';
+  const routeTotal = activeBreakdown ? `₹${activeBreakdown.totalFare.toFixed(2)}` : 'Estimate pending';
 
   const getErrorMessage = (data: unknown, fallback: string) => {
     if (!data || typeof data !== 'object') {
@@ -139,6 +150,7 @@ export default function App() {
     }
 
     setRideId(data.rideId);
+    setRideEndBreakdown(null);
     setMessage(`Ride started with ID: ${data.rideId}`);
   };
 
@@ -169,15 +181,18 @@ export default function App() {
 
     setRideEndBreakdown(data.breakdown);
     setMessage(`Ride ended: ${data.status}`);
-    setRideId(''); // Clear the active ride ID
+    setRideId('');
   };
 
   return (
     <div className="app" data-theme={theme}>
-      <header className="navbar card">
-        <div>
-          <p className="brand">Smart Rider Meter</p>
-          <h1>Auto-Rickshaw Fare Estimator</h1>
+      <header className="navbar glass-panel">
+        <div className="brand-lockup">
+          <span className="logo-mark" aria-hidden="true">🛺</span>
+          <div>
+            <p className="brand">Smart Rider Meter</p>
+            <h1>Fast, transparent auto-rickshaw fares</h1>
+          </div>
         </div>
         <nav className="theme-nav" aria-label="Theme switcher">
           {themeOptions.map((name) => (
@@ -186,6 +201,7 @@ export default function App() {
               type="button"
               className={theme === name ? 'theme-btn active' : 'theme-btn'}
               onClick={() => setTheme(name)}
+              aria-pressed={theme === name}
             >
               {name}
             </button>
@@ -194,78 +210,127 @@ export default function App() {
       </header>
 
       <main className="container">
-        <p className="status">{message || 'Ready to estimate your next ride fare.'}</p>
+        <section className="hero-grid">
+          <div className="hero-card glass-panel animated-card">
+            <p className="eyebrow">Live fare planner</p>
+            <h2>Plan your route before you hop in.</h2>
+            <p className="hero-copy">
+              Enter coordinates, choose the pickup and drop zones, then estimate or start a metered ride with the same trip details.
+            </p>
+            <div className="hero-actions">
+              <a href="#fare-form" className="primary-link">Estimate now</a>
+              <span className={rideId ? 'ride-pill active' : 'ride-pill'}>{rideId ? 'Ride active' : 'No active ride'}</span>
+            </div>
+          </div>
 
-        <form onSubmit={estimateFare} className="card animated-card">
-          <h2>Fare Estimator</h2>
-          <div className="grid">
-            {([
-              ['Start Latitude', 'startLatitude'],
-              ['Start Longitude', 'startLongitude'],
-              ['End Latitude', 'endLatitude'],
-              ['End Longitude', 'endLongitude']
-            ] as const).map(([label, key]) => (
-              <label key={key}>
-                {label}
+          <aside className="summary-card glass-panel animated-card delay-1" aria-label="Fare summary">
+            <div>
+              <span className="summary-label">Current fare</span>
+              <strong>{routeTotal}</strong>
+            </div>
+            <div className="summary-row">
+              <span>Route</span>
+              <b>{trip.startZone} → {trip.endZone}</b>
+            </div>
+            <div className="summary-row">
+              <span>Distance</span>
+              <b>{routeDistance}</b>
+            </div>
+            <div className="summary-row">
+              <span>Passengers</span>
+              <b>{trip.passengerCount}</b>
+            </div>
+          </aside>
+        </section>
+
+        <p className="status" role="status">{message || 'Ready to estimate your next ride fare.'}</p>
+
+        <section className="content-grid">
+          <form id="fare-form" onSubmit={estimateFare} className="glass-panel form-card animated-card">
+            <div className="section-heading">
+              <p className="eyebrow">Trip details</p>
+              <h2>Fare Estimator</h2>
+            </div>
+
+            <div className="field-grid">
+              {([
+                ['Start Latitude', 'startLatitude', 'Pickup north/south coordinate'],
+                ['Start Longitude', 'startLongitude', 'Pickup east/west coordinate'],
+                ['End Latitude', 'endLatitude', 'Drop north/south coordinate'],
+                ['End Longitude', 'endLongitude', 'Drop east/west coordinate']
+              ] as const).map(([label, key, hint]) => (
+                <label className="field" key={key}>
+                  <span>{label}</span>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={trip[key]}
+                    onChange={(e) => setTrip((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
+                  />
+                  <small>{hint}</small>
+                </label>
+              ))}
+
+              <label className="field">
+                <span>Start Zone</span>
+                <select
+                  value={trip.startZone}
+                  onChange={(e) => setTrip((prev) => ({ ...prev, startZone: e.target.value as ZoneType }))}
+                >
+                  {zoneOptions.map((zone) => (
+                    <option key={zone}>{zone}</option>
+                  ))}
+                </select>
+                <small>{zoneDescriptions[trip.startZone]}</small>
+              </label>
+
+              <label className="field">
+                <span>End Zone</span>
+                <select
+                  value={trip.endZone}
+                  onChange={(e) => setTrip((prev) => ({ ...prev, endZone: e.target.value as ZoneType }))}
+                >
+                  {zoneOptions.map((zone) => (
+                    <option key={zone}>{zone}</option>
+                  ))}
+                </select>
+                <small>{zoneDescriptions[trip.endZone]}</small>
+              </label>
+
+              <label className="field">
+                <span>Passenger Count</span>
                 <input
                   type="number"
-                  step="0.0001"
-                  value={trip[key]}
-                  onChange={(e) => setTrip((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
+                  min={1}
+                  max={6}
+                  value={trip.passengerCount}
+                  onChange={(e) => setTrip((prev) => ({ ...prev, passengerCount: Number(e.target.value) }))}
                 />
+                <small>Supports 1–6 riders</small>
               </label>
-            ))}
+            </div>
 
-            <label>
-              Start Zone
-              <select
-                value={trip.startZone}
-                onChange={(e) => setTrip((prev) => ({ ...prev, startZone: e.target.value as ZoneType }))}
-              >
-                {zoneOptions.map((zone) => (
-                  <option key={zone}>{zone}</option>
-                ))}
-              </select>
-            </label>
+            <button type="submit" className="primary-btn">Estimate fare</button>
+          </form>
 
-            <label>
-              End Zone
-              <select
-                value={trip.endZone}
-                onChange={(e) => setTrip((prev) => ({ ...prev, endZone: e.target.value as ZoneType }))}
-              >
-                {zoneOptions.map((zone) => (
-                  <option key={zone}>{zone}</option>
-                ))}
-              </select>
-            </label>
+          <div className="side-stack">
+            <section className="glass-panel ride-card animated-card delay-1">
+              <div className="section-heading">
+                <p className="eyebrow">Meter controls</p>
+                <h2>Ride Lifecycle</h2>
+              </div>
+              <p>Start the ride from the pickup coordinates, then end it at the drop coordinates to calculate the final fare.</p>
+              <div className="actions">
+                <button onClick={startRide} className="primary-btn" disabled={!!rideId}>Start Ride</button>
+                <button onClick={endRide} className="secondary-btn" disabled={!rideId}>End Ride</button>
+              </div>
+              {rideId && <p className="active-ride">Active Ride ID: <code>{rideId}</code></p>}
+            </section>
 
-            <label>
-              Passenger Count
-              <input
-                type="number"
-                min={1}
-                max={6}
-                value={trip.passengerCount}
-                onChange={(e) => setTrip((prev) => ({ ...prev, passengerCount: Number(e.target.value) }))}
-              />
-            </label>
+            {estimate && <BreakdownCard title="Estimated Fare" breakdown={estimate} />}
+            {rideEndBreakdown && <BreakdownCard title="Final Fare" breakdown={rideEndBreakdown} />}
           </div>
-
-          <button type="submit" className="primary-btn">Estimate Fare</button>
-        </form>
-
-        <div className="card animated-card delay-1">
-          <h2>Ride Lifecycle</h2>
-          <div className="actions">
-            <button onClick={startRide} className="primary-btn" disabled={!!rideId}>Start Ride</button>
-            <button onClick={endRide} className="secondary-btn" disabled={!rideId}>End Ride</button>
-          </div>
-          {rideId && <p>Active Ride ID: {rideId}</p>}
-        </div>
-
-        {estimate && <BreakdownCard title="Estimated Fare" breakdown={estimate} />}
-        {rideEndBreakdown && <BreakdownCard title="Final Fare" breakdown={rideEndBreakdown} />}
+        </section>
       </main>
     </div>
   );
@@ -273,18 +338,32 @@ export default function App() {
 
 function BreakdownCard({ title, breakdown }: { title: string; breakdown: Breakdown }) {
   return (
-    <div className="card animated-card delay-2">
-      <h2>{title}</h2>
-      <p>Distance: {breakdown.distanceKm.toFixed(2)} km</p>
-      <p>Base Fare: ₹{breakdown.baseFare.toFixed(2)}</p>
-      <p>Distance Charge: ₹{breakdown.distanceCharge.toFixed(2)}</p>
-      <p>Adjustment Charge: ₹{breakdown.adjustmentCharge.toFixed(2)}</p>
-      <p className="total">Total Fare: ₹{breakdown.totalFare.toFixed(2)}</p>
-      <ul>
+    <section className="glass-panel breakdown-card animated-card delay-2">
+      <div className="section-heading">
+        <p className="eyebrow">Fare breakdown</p>
+        <h2>{title}</h2>
+      </div>
+      <div className="fare-total">₹{breakdown.totalFare.toFixed(2)}</div>
+      <div className="breakdown-grid">
+        <FareMetric label="Distance" value={`${breakdown.distanceKm.toFixed(2)} km`} />
+        <FareMetric label="Base Fare" value={`₹${breakdown.baseFare.toFixed(2)}`} />
+        <FareMetric label="Distance Charge" value={`₹${breakdown.distanceCharge.toFixed(2)}`} />
+        <FareMetric label="Adjustment" value={`₹${breakdown.adjustmentCharge.toFixed(2)}`} />
+      </div>
+      <ul className="factor-list">
         {breakdown.factors.map((factor) => (
           <li key={factor}>{factor}</li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function FareMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="fare-metric">
+      <span>{label}</span>
+      <b>{value}</b>
     </div>
   );
 }
