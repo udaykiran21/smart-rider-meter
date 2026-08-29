@@ -24,7 +24,7 @@ const defaultTrip = {
   passengerCount: 1
 };
 
-const themeOptions = ['ruby', 'mint', 'sky'] as const;
+const themeOptions = ['mint'] as const;
 type ThemeName = (typeof themeOptions)[number];
 
 const zoneDescriptions: Record<ZoneType, string> = {
@@ -41,7 +41,7 @@ const getInitialTheme = (): ThemeName => {
     return savedTheme as ThemeName;
   }
 
-  return 'ruby';
+  return 'mint';
 };
 
 export default function App() {
