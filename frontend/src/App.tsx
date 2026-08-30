@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState, useRef } from 'react';
+import MapComponent from './MapComponent';
 
 type ZoneType = 'STANDARD' | 'AIRPORT' | 'RAILWAY' | 'SUBURBAN';
 
@@ -51,6 +52,10 @@ export default function App() {
   const [rideEndBreakdown, setRideEndBreakdown] = useState<Breakdown | null>(null);
   const [message, setMessage] = useState<string>('');
   const [theme, setTheme] = useState<ThemeName>(getInitialTheme);
+
+  const [simulating, setSimulating] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const simulationRef = useRef<number | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem('theme', theme);
@@ -114,7 +119,7 @@ export default function App() {
     setMessage('Estimate ready');
   };
 
-  const startRide = async () => {
+  const startRide = async (overrideSimulating = false) => {
     if (rideId) {
       setMessage('A ride is already active');
       return;
@@ -152,10 +157,12 @@ export default function App() {
     setRideId(data.rideId);
     setRideEndBreakdown(null);
     setMessage(`Ride started with ID: ${data.rideId}`);
+    return data.rideId;
   };
 
-  const endRide = async () => {
-    if (!rideId) {
+  const endRide = async (currentRideId?: string) => {
+    const idToUse = currentRideId ?? rideId;
+    if (!idToUse) {
       setMessage('Start a ride before ending it');
       return;
     }
@@ -165,7 +172,7 @@ export default function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        rideId,
+        rideId: idToUse,
         endLatitude: trip.endLatitude,
         endLongitude: trip.endLongitude,
         endZone: trip.endZone
@@ -183,6 +190,59 @@ export default function App() {
     setMessage(`Ride ended: ${data.status}`);
     setRideId('');
   };
+
+  const simulateRide = async () => {
+    if (simulating) return;
+
+    if (!estimate) {
+        setMessage('Please estimate the fare first to start a simulation');
+        return;
+    }
+
+    setSimulating(true);
+    setCurrentLocation({ lat: trip.startLatitude, lng: trip.startLongitude });
+
+    const newRideId = await startRide(true);
+    if (!newRideId) {
+        setSimulating(false);
+        return;
+    }
+
+    const distanceKm = estimate.distanceKm;
+    // 1 second per 1 km
+    const durationMs = Math.max(1000, distanceKm * 1000);
+    const startTime = performance.now();
+
+    const animate = (time: number) => {
+        const elapsed = time - startTime;
+        const progress = Math.min(elapsed / durationMs, 1);
+
+        const currentLat = trip.startLatitude + (trip.endLatitude - trip.startLatitude) * progress;
+        const currentLng = trip.startLongitude + (trip.endLongitude - trip.startLongitude) * progress;
+
+        setCurrentLocation({ lat: currentLat, lng: currentLng });
+
+        if (progress < 1) {
+            simulationRef.current = requestAnimationFrame(animate);
+        } else {
+            endRide(newRideId).then(() => {
+                setSimulating(false);
+                setCurrentLocation(null);
+            });
+        }
+    };
+
+    simulationRef.current = requestAnimationFrame(animate);
+  };
+
+  // Cleanup simulation on unmount
+  useEffect(() => {
+    return () => {
+        if (simulationRef.current) {
+            cancelAnimationFrame(simulationRef.current);
+        }
+    };
+  }, []);
 
   return (
     <div className="app" data-theme={theme}>
@@ -311,6 +371,17 @@ export default function App() {
             </div>
 
             <button type="submit" className="primary-btn">Estimate fare</button>
+
+            {estimate && (
+                <MapComponent
+                    startLat={trip.startLatitude}
+                    startLng={trip.startLongitude}
+                    endLat={trip.endLatitude}
+                    endLng={trip.endLongitude}
+                    currentLat={currentLocation?.lat}
+                    currentLng={currentLocation?.lng}
+                />
+            )}
           </form>
 
           <div className="side-stack">
@@ -321,8 +392,9 @@ export default function App() {
               </div>
               <p>Start the ride from the pickup coordinates, then end it at the drop coordinates to calculate the final fare.</p>
               <div className="actions">
-                <button onClick={startRide} className="primary-btn" disabled={!!rideId}>Start Ride</button>
-                <button onClick={endRide} className="secondary-btn" disabled={!rideId}>End Ride</button>
+                <button onClick={() => startRide()} className="primary-btn" disabled={!!rideId || simulating}>Start Ride</button>
+                <button onClick={() => endRide()} className="secondary-btn" disabled={!rideId || simulating}>End Ride</button>
+                <button onClick={simulateRide} className="primary-btn" disabled={!!rideId || simulating || !estimate}>Simulate Ride</button>
               </div>
               {rideId && <p className="active-ride">Active Ride ID: <code>{rideId}</code></p>}
             </section>
