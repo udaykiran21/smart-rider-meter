@@ -66,3 +66,18 @@ input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px 
 @keyframes cityPulse { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(1%, 1%, 0) scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; transition: none !important; } }
 @media (max-width: 860px) { .app { padding: 0.65rem; } .navbar, .hero-grid, .content-grid { grid-template-columns: 1fr; } .navbar { align-items: flex-start; flex-direction: column; } .field-grid { grid-template-columns: 1fr; } }
+
+/* Leaflet map styles */
+.map-container {
+  height: 300px;
+  width: 100%;
+  border-radius: 1rem;
+  overflow: hidden;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+}
+
+/* Additional adjustments for Leaflet container z-index and spacing */
+.leaflet-container {
+  z-index: 1; /* Keep map below other sticky elements */
+}
